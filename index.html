@@ -2,53 +2,91 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Violin Score - Stable</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Violin Navi Viewer</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+    <style>
+        body { background: #f9f9f9; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; }
+        #score-container { background: white; display: inline-block; padding: 10px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        
+        /* 指板のスタイル */
+        #fingerboard {
+            position: relative; width: 300px; height: 150px; background: #3d2b1f; /* 黒檀色 */
+            margin: 0 auto; border-radius: 5px; border: 4px solid #5d4037;
+        }
+        .string {
+            position: absolute; width: 100%; height: 2px; background: #ddd; /* 弦の線 */
+        }
+        .fret-label { position: absolute; color: #aaa; font-size: 10px; top: -15px; }
+        
+        /* 指の位置を示す光る点 */
+        #finger-dot {
+            position: absolute; width: 20px; height: 20px; background: #ff5252;
+            border-radius: 50%; display: none; transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px #ff5252; z-index: 10;
+        }
+        .label { position: absolute; left: -40px; color: #fff; font-weight: bold; width: 30px; }
+    </style>
 </head>
 <body>
-    <h2>Violin Test (Fixed)</h2>
-    <div id="output"></div>
+    <h2>Violin Navi</h2>
+    
+    <div id="score-container">
+        <div id="output"></div>
+    </div>
+
+    <div id="fingerboard">
+        <div id="finger-dot"></div>
+        <div class="string" style="top: 20px;"><div class="label">E</div></div>
+        <div class="string" style="top: 55px;"><div class="label">A</div></div>
+        <div class="string" style="top: 90px;"><div class="label">D</div></div>
+        <div class="string" style="top: 125px;"><div class="label">G</div></div>
+    </div>
+
+    <p style="color: #666; font-size: 14px;">※音符をクリックすると指板が光ります（予定）</p>
 
     <script>
         window.onload = function() {
-            try {
-                var VF = Vex.Flow;
-                var div = document.getElementById("output");
-                var renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
-                renderer.resize(500, 200);
-                var context = renderer.getContext();
-                
-                var stave = new VF.Stave(10, 40, 400);
-                stave.addClef("treble").setContext(context).draw();
+            var VF = Vex.Flow;
+            var div = document.getElementById("output");
+            var renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
+            renderer.resize(450, 150);
+            var context = renderer.getContext();
+            var stave = new VF.Stave(10, 20, 400);
+            stave.addClef("treble").setContext(context).draw();
 
-                // 音符を個別に作成して運指を追加
-// A線の3指（レ）の場合
-var n1 = new VF.StaveNote({ keys: ["d/5"], duration: "q" });
-n1.addModifier(new VF.Annotation("3").setVerticalJustification(VF.Annotation.VerticalJustify.TOP), 0); // 指番号
-n1.addModifier(new VF.Annotation("--- A ---").setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM), 0); // 弦のナビ
+            // データの定義（音符、指番号、弦、位置）
+            // position: 0=開放, 1=1指(人差), 2=中指...
+            var data = [
+                { key: "d/4", finger: "3", string: "D", pos: 3 },
+                { key: "a/4", finger: "0", string: "A", pos: 0 },
+                { key: "b/4", finger: "1", string: "A", pos: 1 },
+                { key: "c/5", finger: "2", string: "A", pos: 2 }
+            ];
 
-                var n2 = new VF.StaveNote({ keys: ["e/4"], duration: "q" });
-                n2.addModifier(new VF.Annotation("0").setVerticalJustification(VF.Annotation.VerticalJustify.TOP), 0);
+            var notes = data.map(function(d) {
+                var sn = new VF.StaveNote({ keys: [d.key], duration: "q" });
+                sn.addModifier(new VF.Annotation(d.finger).setVerticalJustification(VF.Annotation.VerticalJustify.TOP), 0);
+                return sn;
+            });
 
-                var n3 = new VF.StaveNote({ keys: ["f/4"], duration: "q" });
-                n3.addModifier(new VF.Annotation("1").setVerticalJustification(VF.Annotation.VerticalJustify.TOP), 0);
+            var voice = new VF.Voice({ num_beats: 4, beat_value: 4 });
+            voice.addTickables(notes);
+            new VF.Formatter().joinVoices([voice]).format([voice], 350);
+            voice.draw(context, stave);
 
-                var n4 = new VF.StaveNote({ keys: ["g/4"], duration: "q" });
-                n4.addModifier(new VF.Annotation("2").setVerticalJustification(VF.Annotation.VerticalJustify.TOP), 0);
+            // --- ナビゲーション機能 ---
+            var dot = document.getElementById("finger-dot");
+            var stringMap = { "E": 20, "A": 55, "D": 90, "G": 125 };
 
-                var notes = [n1, n2, n3, n4];
-
-                var voice = new VF.Voice({ num_beats: 4, beat_value: 4 });
-                voice.addTickables(notes);
-                
-                new VF.Formatter().joinVoices([voice]).format([voice], 350);
-                voice.draw(context, stave);
-                
-                console.log("成功しました！");
-            } catch (e) {
-                console.error(e);
-                alert("エラー: " + e.message);
+            // サンプルとして最初の音（D線の3指）を光らせてみる
+            function showNavi(string, pos) {
+                dot.style.display = "block";
+                dot.style.top = stringMap[string] + "px";
+                dot.style.left = (pos * 60 + 30) + "px"; // 簡易的な指の位置計算
             }
+
+            showNavi("D", 3); // 起動時に最初の音を表示
         };
     </script>
 </body>
