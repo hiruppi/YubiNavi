@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Violin Score - Stable</title>
+    <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+</head>
+<body>
+    <h2>Violin Test (Fixed)</h2>
+    <div id="output"></div>
+
+    <script>
+        window.onload = function() {
+            try {
+                var VF = Vex.Flow;
+                var div = document.getElementById("output");
+                var renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
+                renderer.resize(500, 200);
+                var context = renderer.getContext();
+                
+                var stave = new VF.Stave(10, 40, 400);
+                stave.addClef("treble").setContext(context).draw();
+
+                // 音符を個別に作成して運指を追加
+// A線の3指（レ）の場合
+var n1 = new VF.StaveNote({ keys: ["d/5"], duration: "q" });
+n1.addModifier(new VF.Annotation("3").setVerticalJustification(VF.Annotation.VerticalJustify.TOP), 0); // 指番号
+n1.addModifier(new VF.Annotation("--- A ---").setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM), 0); // 弦のナビ
+
+                var n2 = new VF.StaveNote({ keys: ["e/4"], duration: "q" });
+                n2.addModifier(new VF.Annotation("0").setVerticalJustification(VF.Annotation.VerticalJustify.TOP), 0);
+
+                var n3 = new VF.StaveNote({ keys: ["f/4"], duration: "q" });
+                n3.addModifier(new VF.Annotation("1").setVerticalJustification(VF.Annotation.VerticalJustify.TOP), 0);
+
+                var n4 = new VF.StaveNote({ keys: ["g/4"], duration: "q" });
+                n4.addModifier(new VF.Annotation("2").setVerticalJustification(VF.Annotation.VerticalJustify.TOP), 0);
+
+                var notes = [n1, n2, n3, n4];
+
+                var voice = new VF.Voice({ num_beats: 4, beat_value: 4 });
+                voice.addTickables(notes);
+                
+                new VF.Formatter().joinVoices([voice]).format([voice], 350);
+                voice.draw(context, stave);
+                
+                console.log("成功しました！");
+            } catch (e) {
+                console.error(e);
+                alert("エラー: " + e.message);
+            }
+        };
+    </script>
+</body>
+</html>
